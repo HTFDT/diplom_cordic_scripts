@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <iostream>
 #include <vector>
 #include <cstdint>
 #include <cmath>
@@ -23,15 +24,17 @@ inline double PI() {
 inline double parse_number(const std::string& s) {
     std::string cleaned = s;
     std::replace(cleaned.begin(), cleaned.end(), ',', '.');
-    size_t pos = 0;
+
+    // Используем istringstream с локалью "C",
+    // чтобы '.' всегда была десятичным разделителем
+    std::istringstream iss(cleaned);
+    iss.imbue(std::locale("C"));
+
     double val;
-        try {
-        val = std::stod(cleaned, &pos);
-    } catch (...) {
+    iss >> val;
+
+    if (iss.fail() || !iss.eof()) {
         throw std::invalid_argument("Не удалось распознать число: " + s);
-    }
-    if (pos != cleaned.size()) {
-        throw std::invalid_argument("Некорректное число: " + s);
     }
 
     return val;
