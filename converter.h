@@ -1,0 +1,148 @@
+#pragma once
+
+#include <string>
+#include <vector>
+#include <cstdint>
+#include <cmath>
+#include <algorithm>
+#include <fstream>
+#include <sstream>
+#include <stdexcept>
+#include <bitset>
+#include "json.h"
+using json = nlohmann::json;
+
+// Вычисление pi через стандартную библиотеку
+inline double PI() {
+    return std::acos(-1.0);
+}
+
+// ============================================================
+// Парсинг числа: принимает '.' и ',' как десятичный разделитель
+// ============================================================
+inline double parse_number(const std::string& s) {
+    std::string cleaned = s;
+    std::replace(cleaned.begin(), cleaned.end(), ',', '.');
+    size_t pos = 0;
+    double val;
+        try {
+        val = std::stod(cleaned, &pos);
+    } catch (...) {
+        throw std::invalid_argument("Не удалось распознать число: " + s);
+    }
+    if (pos != cleaned.size()) {
+        throw std::invalid_argument("Некорректное число: " + s);
+    }
+
+    return val;
+}
+
+// ============================================================
+// Градусы → радианы
+// ============================================================
+inline double deg_to_rad(double deg) {
+    return deg * PI() / 180.0;
+}
+
+// ============================================================
+// Радианы → градусы
+// ============================================================
+inline double rad_to_deg(double rad) {
+    return rad * 180.0 / PI();
+}
+
+// ============================================================
+// Угол в радианах → Q1.(bits-1) fixed-point
+// Диапазон [-2π, 2π) отображается на [-2^{bits-1}, 2^{bits-1})
+// ============================================================
+inline int64_t angle_rad_to_fixed(double angle_rad, int bits) {
+    const double TWO_PI = 2.0 * PI();
+
+    // Редукция в (-2π, 2π)
+    // fmod гарантирует |результат| < |делитель|
+    double reduced = fmod(angle_rad, TWO_PI);
+
+    // Нормализация в (-1, 1)
+    double normalized = reduced / TWO_PI;
+
+    // Масштабирование в Q1.(bits-1)
+    double scale = (double)(1LL << (bits - 1));
+    int64_t result = (int64_t)llround(normalized * scale);
+
+    // Ограничение диапазона: [-2^(bits-1), 2^(bits-1) - 1]
+    int64_t max_val = (1LL << (bits - 1)) - 1;
+    int64_t min_val = -(1LL << (bits - 1));
+    if (result > max_val) result = max_val;
+    if (result < min_val) result = min_val;
+
+    return result;
+}
+
+// ============================================================
+// Q1.(bits-1) fixed-point → угол в радианах
+// ============================================================
+inline double fixed_to_angle_rad(int64_t fixed_val, int bits) {
+    double scale = (double)(1LL << (bits - 1));
+    return (fixed_val / scale) * 2.0 * PI();
+}
+
+// ============================================================
+// Q1.(bits-1) fixed-point результат sin/cos → double
+// Здесь 1.0 = 2^(bits-1)
+// ============================================================
+inline double fixed_result_to_double(int64_t fixed_val, int bits) {
+    double scale = (double)(1LL << (bits - 1));
+    return fixed_val / scale;
+}
+
+// ============================================================
+// Чтение значений из файла (разделённых пробельными символами)
+// ============================================================
+inline std::vector<std::string> read_values_from_file(const std::string& filename) {
+    std::vector<std::string> values;
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        throw std::runtime_error("Не удалось открыть файл: " + filename);
+    }
+
+    std::string token;
+    while (file >> token) {
+        values.push_back(token);
+    }
+    return values;
+}
+
+// ============================================================
+// Запись строки в файл
+// ============================================================
+inline void write_to_file(const std::string& filename,
+                          const std::string& content) {
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        throw std::runtime_error("Не удалось открыть файл для записи: " + filename);
+    }
+    file << content;
+}
+
+// ============================================================
+// Форматирование числа в двоичную строку заданной разрядности
+// ============================================================
+inline std::string to_bin_string(int64_t value, int bits) {
+    std::string result(bits, '0');
+    uint64_t uval = (uint64_t)value;
+    for (int i = 0; i < bits; i++) {
+        if (uval & (1ULL << (bits - 1 - i))) {
+            result[i] = '1';
+        }
+    }
+    return result;
+}
+
+inline json fixed_to_json(int64_t value, int bits) {
+    return json{
+        {"dec", value},
+        {"bin", to_bin_string(value, bits)}
+    };
+}
+
+
