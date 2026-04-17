@@ -7,7 +7,7 @@
 
 // ============================================================
 // Генерация таблицы arctan(2^{-i}) для CORDIC
-// Формат: Q1.(bits-1), где 1.0 соответствует pi/2
+// Формат: знаковые Q1.(bits-1)
 // Возвращает вектор из iterations констант (i = 0 .. iterations-1)
 // ============================================================
 inline std::vector<int64_t> generate_atan_table(int bits, int iterations) {
@@ -26,7 +26,7 @@ inline std::vector<int64_t> generate_atan_table(int bits, int iterations) {
 // Генерация K_inv (обратный коэффициент усиления CORDIC)
 // K = П_{i=0}^{n-1} sqrt(1 + 2^{-2i})
 // K_inv = 1/K ≈ 0.6073 (для большого n)
-// Формат: Q1.(bits-1), где 1.0 соответствует 1.0
+// Формат: знаковый Q1.(bits-1)
 // ============================================================
 inline int64_t generate_k_inv(int bits, int iterations) {
     double K = 1.0;

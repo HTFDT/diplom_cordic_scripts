@@ -55,8 +55,9 @@ inline double rad_to_deg(double rad) {
 }
 
 // ============================================================
-// Угол в радианах → Q1.(bits-1) fixed-point
-// Диапазон [-2π, 2π) отображается на [-2^{bits-1}, 2^{bits-1})
+// Угол в радианах → беззнаковый Q0.(bits) fixed-point
+// Диапазон [0, 2π) отображается на [0, 2^{bits})
+// При этом 2 бита отводится под квадрант, а (bits - 2) - под представление угла в диапазоне [0, pi/2)
 // ============================================================
 inline int64_t angle_rad_to_fixed(double angle_rad, int bits) {
     const double TWO_PI = 2.0 * PI();
@@ -65,28 +66,24 @@ inline int64_t angle_rad_to_fixed(double angle_rad, int bits) {
     // fmod гарантирует |результат| < |делитель|
     double reduced = fmod(angle_rad, TWO_PI);
 
-    // Нормализация в (-1, 1)
+    // Перевод отрицательных углов в эквивалентные положительные
+    if (reduced < 0)
+        reduced = TWO_PI + reduced;
+
+    // Нормализация в [0, 1)
     double normalized = reduced / TWO_PI;
 
-    // Масштабирование в Q1.(bits-1)
-    double scale = (double)(1LL << (bits - 1));
+    // Масштабирование в Q0.(bits)
+    double scale = (double)(1LL << bits);
     int64_t result = (int64_t)llround(normalized * scale);
 
-    // Ограничение диапазона: [-2^(bits-1), 2^(bits-1) - 1]
-    int64_t max_val = (1LL << (bits - 1)) - 1;
-    int64_t min_val = -(1LL << (bits - 1));
+    // Ограничение диапазона: [0, 2^{bits} - 1]
+    int64_t max_val = (1LL << bits) - 1;
+    int64_t min_val = 0;
     if (result > max_val) result = max_val;
     if (result < min_val) result = min_val;
 
     return result;
-}
-
-// ============================================================
-// Q1.(bits-1) fixed-point → угол в радианах
-// ============================================================
-inline double fixed_to_angle_rad(int64_t fixed_val, int bits) {
-    double scale = (double)(1LL << (bits - 1));
-    return (fixed_val / scale) * 2.0 * PI();
 }
 
 // ============================================================

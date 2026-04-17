@@ -35,6 +35,13 @@ static inline int64_t truncate(int64_t val, int bits) {
     return val;
 }
 
+// Насышение, если 
+static inline int64_t saturate(int64_t val, int bits) {
+    int64_t max_val = (1LL << (bits - 1)) - 1;
+    int64_t min_val = -(1LL << (bits - 1));
+    return std::max(min_val, std::min(max_val, val));
+}
+
 // ============================================================
 //  Структуры для хранения результатов
 // ============================================================
@@ -62,7 +69,7 @@ struct CordicResult {
 // ============================================================
 
 static CordicResult compute_sin(
-    int64_t input_fixed,               // вход в Q1.(bits-1), масштаб 2π
+    int64_t input_fixed,               // вход беззнаковый в Q0.(bits)
     double  input_deg,
     double  input_rad,
     int     bits,
@@ -74,55 +81,33 @@ static CordicResult compute_sin(
     res.arg_deg   = input_deg;
     res.arg_rad   = input_rad;
 
-    int frac_bits = bits - 1;
     int num_iterations = (int)atan_table.size();
 
     // ----------------------------------------------------------
-    // Шаг 1: Извлечение знака и взятие модуля
+    // Шаг 1: Определение квадранта (два старших бита полного угла)
+    //        и извлечение угла внутри квадранта
     // ----------------------------------------------------------
-    int64_t input_sign;  // +1 или -1
-    int64_t abs_arg;
+    // angle_bits бит, старшие 2 — квадрант,
+    // младшие (bits-2) — угол в пределах квадранта
+    int quadrant_bits = bits - 2;   // 30 для angle_bits=32
 
-    if (input_fixed < 0) {
-        input_sign = -1;
-        abs_arg = -input_fixed;
-    } else {
-        input_sign = 1;
-        abs_arg = input_fixed;
-    }
-
-    // Особый случай: минимальное значение -2^{bits-1}
-    // Соответствует -2π ≡ 0, sin = 0
-    int64_t overflow_val = 1LL << frac_bits;
-    if (abs_arg >= overflow_val) {
-        abs_arg = 0;
-    }
-
-    // ----------------------------------------------------------
-    // Шаг 2: Определение квадранта (два старших бита модуля)
-    //         и извлечение угла внутри квадранта
-    // ----------------------------------------------------------
-    // abs_arg: frac_bits бит, старшие 2 — квадрант,
-    // младшие (frac_bits-2) — угол в пределах квадранта
-    int quadrant_bits = frac_bits - 2;   // 29 для bits=32
-
-    int64_t quadrant = (abs_arg >> quadrant_bits) & 0x3;
+    int64_t quadrant = (input_fixed >> quadrant_bits) & 0b11;
     int64_t Q0 = quadrant & 1;           // бит выбора sin/cos
     int64_t Q1 = (quadrant >> 1) & 1;    // бит инверсии знака
 
     // Угол внутри квадранта [0, pi/2)
-    int64_t theta = abs_arg & ((1LL << quadrant_bits) - 1);
+    int64_t theta = input_fixed & ((1LL << quadrant_bits) - 1);
 
     // ----------------------------------------------------------
-    // Шаг 3: Масштабирование угла для CORDIC
-    //   theta сейчас: (frac_bits-2) бит, представляет [0, pi/2)
-    //   Нужно: frac_bits бит (Q1.(bits-1)), где 2^(bits-1) = pi/2
-    //   Сдвиг влево на 2 бита
+    // Шаг 2: Масштабирование угла для CORDIC
+    //   theta сейчас: (bits-2) бит, представляет [0, pi/2)
+    //   Нужно: bits бит (Q1.(bits-1))
+    //   Сдвиг влево на 1 бит, остается знаковый 0 и 31 бит дробной части
     // ----------------------------------------------------------
-    int64_t z0 = theta << 2;
+    int64_t z0 = theta << 1;
 
     // ----------------------------------------------------------
-    // Шаг 4: Итерации CORDIC (режим вращения)
+    // Шаг 3: Итерации CORDIC (режим вращения)
     //   x0 = K_inv,  y0 = 0,  z0 = theta_scaled
     //   На каждой итерации:
     //     d = (z >= 0) ? +1 : -1
@@ -156,6 +141,12 @@ static CordicResult compute_sin(
             z_new = z + atan_table[i];
         }
 
+        // Насыщаем до bits
+        x_new = saturate(x_new, bits);
+        y_new = saturate(y_new, bits);
+        z_new = saturate(z_new, bits);
+
+        // Обрезаем до bits
         x = truncate(x_new, bits);
         y = truncate(y_new, bits);
         z = truncate(z_new, bits);
@@ -164,35 +155,24 @@ static CordicResult compute_sin(
     }
 
     // ----------------------------------------------------------
-    // Шаг 5: Выбор sin/cos по квадранту и применение знака
+    // Шаг 4: Выбор sin/cos по квадранту и применение знака
     //   Q0 = 0 -> берём y (sin),  Q0 = 1 → берём x (cos)
     //   Q1 = 1 -> инвертируем знак
-    //   input_sign -> учёт исходного знака аргумента
     // ----------------------------------------------------------
     int64_t selected = Q0 ? x : y;
 
     if (Q1) selected = -selected;
-    if (input_sign < 0) selected = -selected;
 
     res.result_fixed  = truncate(selected, bits);
     res.result_double = fixed_result_to_double(res.result_fixed, bits);
 
     // Эталонное значение
-    res.reference_fixed = (int64_t)llround(std::sin(input_rad) * (double)(1LL << (bits - 1)));
-    res.reference_double = std::sin(input_rad);
+    double ref_sin = std::sin(input_rad);
+    res.reference_fixed = saturate((int64_t)llround(ref_sin * (double)(1LL << (bits - 1))), bits);
+    res.reference_double = fixed_result_to_double(res.reference_fixed, bits);
     res.diff_fixed = res.result_fixed - res.reference_fixed;
 
     return res;
-}
-
-// ============================================================
-//  Форматирование JSON
-// ============================================================
-
-static std::string escape_json_string(const std::string& s) {
-    // Для числовых значений экранирование не требуется,
-    // но на всякий случай
-    return s;
 }
 
 
@@ -243,6 +223,7 @@ static void print_usage() {
         << "  --deg             Вход в градусах (по умолчанию)\n"
         << "  --rad             Вход в радианах\n"
         << "  --bits N          Разрядность (по умолчанию: 32)\n"
+        << "  -n, --iterations N Кол-во итераций CORDIC"
         << "  -i, --in ФАЙЛ    Читать значения из файла\n"
         << "  -o, --out ФАЙЛ   Записать результат JSON в файл\n"
         << "  -h, --help        Показать справку\n"
@@ -286,6 +267,7 @@ int main(int argc, char* argv[]) {
 
     bool use_radians = false;
     int bits = 32;
+    int iterations = bits;
     std::string in_file;
     std::string out_file;
     std::vector<std::string> raw_values;
@@ -305,6 +287,16 @@ int main(int argc, char* argv[]) {
             bits = std::stoi(argv[a]);
             if (bits < 4 || bits > 62) {
                 std::cerr << "Ошибка: bits должен быть в диапазоне [4, 62]\n";
+                return 1;
+            }
+        } else if (arg == "-n" || arg == "--iterations") {
+            if (++a >= argc) { 
+                std::cerr << "Ошибка: --iterations требует значение\n"; 
+                return 1; 
+            }
+            iterations = std::stoi(argv[a]);
+            if (iterations < 0) {
+                std::cerr << "Ошибка: iterations должен быть > 0\n";
                 return 1;
             }
         } else if (arg == "-i" || arg == "--in") {
@@ -341,9 +333,8 @@ int main(int argc, char* argv[]) {
     }
 
     // ---- Генерация констант CORDIC ----
-    int num_iterations = bits - 1;
-    auto atan_table = generate_atan_table(bits, num_iterations);
-    int64_t k_inv   = generate_k_inv(bits, num_iterations);
+    auto atan_table = generate_atan_table(bits, iterations);
+    int64_t k_inv   = generate_k_inv(bits, iterations);
 
     // ---- Вычисление ----
     std::vector<CordicResult> results;

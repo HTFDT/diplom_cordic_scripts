@@ -45,7 +45,7 @@ int main(int argc, char* argv[]) {
     setlocale(LC_ALL, "ru_RU.UTF-8");
 
     int bits = 32;
-    int iterations = -1;
+    int iterations = bits;
     std::string out_file;
 
     for (int a = 1; a < argc; a++) {
@@ -57,6 +57,10 @@ int main(int argc, char* argv[]) {
         } else if (arg == "-n" || arg == "--iterations") {
             if (++a >= argc) { std::cerr << "Ошибка: --iterations требует значение\n"; return 1; }
             iterations = std::stoi(argv[a]);
+            if (iterations < 0) {
+                std::cerr << "Ошибка: iterations должен быть > 0\n";
+                return 1;
+            }
         } else if (arg == "-o" || arg == "--out") {
             if (++a >= argc) { std::cerr << "Ошибка: --out требует имя файла\n"; return 1; }
             out_file = argv[a];
@@ -68,8 +72,6 @@ int main(int argc, char* argv[]) {
             return 1;
         }
     }
-
-    if (iterations < 0) iterations = bits - 1;
 
     auto atan_table = generate_atan_table(bits, iterations);
     int64_t k_inv   = generate_k_inv(bits, iterations);
