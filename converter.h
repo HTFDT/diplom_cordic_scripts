@@ -144,5 +144,3 @@ inline json fixed_to_json(int64_t value, int bits) {
         {"bin", to_bin_string(value, bits)}
     };
 }
-
-

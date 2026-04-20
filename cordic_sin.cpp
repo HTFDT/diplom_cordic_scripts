@@ -1,6 +1,7 @@
 #include "converter.h"
 #include "const_generator.h"
 #include "json.h"
+#include "cli_common.h"
 using json = nlohmann::json;
 
 #include <iostream>
@@ -10,6 +11,24 @@ using json = nlohmann::json;
 #include <iomanip>
 #include <cstdint>
 #include <cmath>
+
+enum class Verbosity {
+    BRIEF,
+    VERBOSE
+};
+
+struct SinReplState : ReplState {
+    OutputFormat format = OutputFormat::JSON;
+    Verbosity verbosity = Verbosity::VERBOSE;
+};
+
+// else if (cmd == "verbose" || cmd == "v") {
+//             state_.verbosity = Verbosity::VERBOSE;
+//             std::cout << "  Детализация: подробная\n";
+//         } else if (cmd == "brief") {
+//             state_.verbosity = Verbosity::BRIEF;
+//             std::cout << "  Детализация: краткая\n";
+//         }
 
 // ============================================================
 //  Целочисленная арифметика для моделирования Минитеры
