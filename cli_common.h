@@ -40,7 +40,7 @@ template <typename TArgs = CommonArgs, typename TReplState = ReplState>
 struct AppShell {
     static_assert(std::is_base_of<CommonArgs, TArgs>::value,
                   "TArgs должен наследоваться от CommonArgs");
-    static_assert(std::is_base_of<TReplState, ReplState>::value,
+    static_assert(std::is_base_of<ReplState, TReplState>::value,
                   "TReplState должен наследоваться от ReplState");
                   
 public:
@@ -98,9 +98,9 @@ protected:
     // ----------------------------------------------------------
     // Загрузка аргументов в args_
     // ----------------------------------------------------------
-    virtual void load_args(int args, char* argv[]) {
+    virtual void load_args(int argc, char* argv[]) {
         // Парсинг аргументов командной строки
-        app_.parse(args, argv);
+        app_.parse(argc, argv);
     }
 
     // ----------------------------------------------------------

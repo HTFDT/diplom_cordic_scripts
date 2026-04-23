@@ -137,10 +137,3 @@ inline std::string to_bin_string(int64_t value, int bits) {
     }
     return result;
 }
-
-inline json fixed_to_json(int64_t value, int bits) {
-    return json{
-        {"dec", value},
-        {"bin", to_bin_string(value, bits)}
-    };
-}

@@ -45,8 +45,8 @@ protected:
         return !args_.values.empty();
     }
 
-    virtual void load_args(int args, char* argv[]) {
-        AppShell<ConverterArgs>::load_args(args, argv);
+    virtual void load_args(int argc, char* argv[]) {
+        AppShell<ConverterArgs>::load_args(argc, argv);
 
         // Чтение значений из файла, если указан
         if (!args_.in_file.empty()) {
@@ -155,7 +155,8 @@ protected:
             << "Ввод значений:\n"
             << "  Одно или несколько чисел через пробел.\n"
             << "  Десятичный разделитель: точка или запятая.\n"
-            << "  Пример: 45 90.5 -135,7\n";
+            << "  Пример: 45 90.5 -135,7\n"
+            << "\n";
     }
 };
 

@@ -3,6 +3,7 @@
 #include "json.h"
 #include "cli_common.h"
 using json = nlohmann::json;
+using ordered_json = nlohmann::ordered_json;
 
 #include <iostream>
 #include <string>
@@ -11,24 +12,6 @@ using json = nlohmann::json;
 #include <iomanip>
 #include <cstdint>
 #include <cmath>
-
-enum class Verbosity {
-    BRIEF,
-    VERBOSE
-};
-
-struct SinReplState : ReplState {
-    OutputFormat format = OutputFormat::JSON;
-    Verbosity verbosity = Verbosity::VERBOSE;
-};
-
-// else if (cmd == "verbose" || cmd == "v") {
-//             state_.verbosity = Verbosity::VERBOSE;
-//             std::cout << "  Детализация: подробная\n";
-//         } else if (cmd == "brief") {
-//             state_.verbosity = Verbosity::BRIEF;
-//             std::cout << "  Детализация: краткая\n";
-//         }
 
 // ============================================================
 //  Целочисленная арифметика для моделирования Минитеры
@@ -54,7 +37,7 @@ static inline int64_t truncate(int64_t val, int bits) {
     return val;
 }
 
-// Насышение, если 
+// Насышение 
 static inline int64_t saturate(int64_t val, int bits) {
     int64_t max_val = (1LL << (bits - 1)) - 1;
     int64_t min_val = -(1LL << (bits - 1));
@@ -195,198 +178,241 @@ static CordicResult compute_sin(
 }
 
 
-static std::string results_to_json(
-    const std::vector<CordicResult>& results, int bits)
+static std::string results_to_json(const std::vector<CordicResult>& results, bool include_iterations, int bits)
 {
-    json output = json::array();
+    ordered_json output = ordered_json::array();
 
     for (const auto& res : results) {
-        json iter_array = json::array();
-        for (const auto& it : res.iterations) {
-            iter_array.push_back({
-                {"cos", fixed_to_json(it.cos_val, bits)},
-                {"sin", fixed_to_json(it.sin_val, bits)},
-                {"z",   fixed_to_json(it.z_val, bits)}
-            });
-        }
-
-        output.push_back({
-            {"arg",              fixed_to_json(res.arg_fixed, bits)},
+        ordered_json item = {
+            {"arg",              to_bin_string(res.arg_fixed, bits)},
             {"arg_deg",          res.arg_deg},
             {"arg_rad",          res.arg_rad},
-            {"result",           fixed_to_json(res.result_fixed, bits)},
+            {"result",           to_bin_string(res.result_fixed, bits)},
             {"result_double",    res.result_double},
-            {"reference",        fixed_to_json(res.reference_fixed, bits)},
-            {"reference_diff",   fixed_to_json(res.diff_fixed, bits)},
-            {"cordic_iterations", iter_array}
-        });
+            {"reference",        to_bin_string(res.reference_fixed, bits)},
+            {"reference_diff",   to_bin_string(res.diff_fixed, bits)}
+        };
+
+        if (include_iterations){
+            ordered_json iter_obj = ordered_json::object();
+            for (int i = 0; i < res.iterations.size(); i++) {
+                iter_obj[std::to_string(i)] = {
+                    {"cos", to_bin_string(res.iterations[i].cos_val, bits)},
+                    {"sin", to_bin_string(res.iterations[i].sin_val, bits)},
+                    {"z",   to_bin_string(res.iterations[i].z_val, bits)}
+                };
+            }
+            item["cordic_iterations"] = iter_obj;
+        }
+
+        output.push_back(item);
     }
 
     return output.dump(2) + "\n";
 }
 
+enum class Verbosity {
+    BRIEF,
+    VERBOSE
+};
 
+struct SinReplState : ReplState {
+    Verbosity verbosity = Verbosity::VERBOSE;
+};
 
-// ============================================================
-//  CLI
-// ============================================================
+struct SinArgs : CommonArgs {
+    bool use_radians = false;
+    std::string in_file;
+    int iterations = 32;
+    std::vector<std::string> values;
+};
 
-static void print_usage() {
-    std::cerr
-        << "Использование: cordic_sin [ПАРАМЕТРЫ] [значение1 значение2 ...]\n"
-        << "\n"
-        << "Вычисляет sin(x) методом CORDIC в целочисленной арифметике\n"
-        << "с фиксированной точкой.\n"
-        << "\n"
-        << "Параметры:\n"
-        << "  --deg             Вход в градусах (по умолчанию)\n"
-        << "  --rad             Вход в радианах\n"
-        << "  --bits N          Разрядность (по умолчанию: 32)\n"
-        << "  -n, --iterations N Кол-во итераций CORDIC"
-        << "  -i, --in ФАЙЛ    Читать значения из файла\n"
-        << "  -o, --out ФАЙЛ   Записать результат JSON в файл\n"
-        << "  -h, --help        Показать справку\n"
-        << "\n"
-        << "Формат вывода (JSON):\n"
-        << "  Список объектов, по одному на каждое входное значение.\n"
-        << "  Каждый объект содержит:\n"
-        << "    arg               - аргумент в Q1.(bits-1), формат {dec, bin}\n"
-        << "    arg_deg           - аргумент в градусах (double)\n"
-        << "    arg_rad           - аргумент в радианах (double)\n"
-        << "    result            - результат sin в Q1.(bits-1), формат {dec, bin}\n"
-        << "    result_double     - результат sin (double)\n"
-        << "    reference         - эталон std::sin() в Q1.(bits-1), формат {dec, bin}\n"
-        << "    reference_diff    - разница result-reference в Q1.(bits-1), формат {dec, bin}\n"
-        << "    cordic_iterations - список итераций CORDIC, каждая содержит:\n"
-        << "        cos  - значение x (cos) на итерации, формат {dec, bin}\n"
-        << "        sin  - значение y (sin) на итерации, формат {dec, bin}\n"
-        << "        z    - остаток угла на итерации, формат {dec, bin}\n"
-        << "\n"
-        << "Пример вывода:\n"
-        << "  [\n"
-        << "    {\n"
-        << "      \"arg\": {\"dec\": 536870912, \"bin\": \"00100000...\"},\n"
-        << "      \"arg_deg\": 90.0,\n"
-        << "      \"arg_rad\": 1.5707963267949,\n"
-        << "      \"result\": {\"dec\": 2147483647, \"bin\": \"01111111...\"},\n"
-        << "      \"result_double\": 0.99999999953,\n"
-        << "      \"reference\": {\"dec\": 2147483647, \"bin\": \"01111111...\"},\n"
-        << "      \"reference_diff\": {\"dec\": 0, \"bin\": \"00000000...\"},\n"
-        << "      \"cordic_iterations\": [\n"
-        << "        {\"cos\": {...}, \"sin\": {...}, \"z\": {...}},\n"
-        << "        ...\n"
-        << "      ]\n"
-        << "    }\n"
-        << "  ]\n";
-}
+struct SinShell : AppShell<SinArgs, SinReplState> {
+public:
+    SinShell() : AppShell(
+        "cordic_sin.exe", 
+        "Вычисляет sin(x) методом CORDIC в целочисленной арифметике\n"
+        "с фиксированной точкой.\n"
+    ) {
+        app_.add_flag("--rad", args_.use_radians,
+            "Вход в радианах (по умолчанию: градусы)");
+
+        bool placeholder;
+        app_.add_flag("--deg", placeholder,
+            "Вход в градусах (по умолчанию)")
+            ->excludes("--rad");
+
+        app_.add_option("-i,--in", args_.in_file,
+            "Читать значения из файла")
+            ->check(CLI::ExistingFile);
+
+        app_.add_option("-n,--iterations", args_.iterations,
+            "Кол-во итераций (по умолчанию: 32)")
+            ->check(CLI::Range(4, 62));
+
+        app_.add_option("values", args_.values,
+            "Входные значения")
+            ->expected(-1);
+    }
+
+protected:
+    virtual bool is_batch() {
+        return !args_.values.empty();
+    }
+
+    virtual void load_args(int argc, char* argv[]) {
+        AppShell<SinArgs, SinReplState>::load_args(argc, argv);
+
+        // Чтение значений из файла, если указан
+        if (!args_.in_file.empty()) {
+            auto file_vals = read_values_from_file(args_.in_file);
+            args_.values.insert(
+                args_.values.end(),
+                file_vals.begin(), file_vals.end());
+        }
+    }
+
+    virtual void load_repl_input(const std::string& line) {
+        // Разбиваем строку на токены
+        std::vector<std::string> values;
+        std::istringstream iss(line);
+        std::string token;
+        while (iss >> token) {
+            values.push_back(token);
+        }
+
+        if (values.empty())
+            return;
+
+        args_.values = values;
+    }
+
+    virtual std::string compute() {
+        // ---- Генерация констант CORDIC ----
+        auto atan_table = generate_atan_table(args_.bits, args_.iterations);
+        int64_t k_inv   = generate_k_inv(args_.bits, args_.iterations);
+
+        // ---- Вычисление ----
+        std::vector<CordicResult> results;
+        results.reserve(args_.values.size());
+
+        for (size_t i = 0; i < args_.values.size(); i++) {
+            double angle;
+            try {
+                angle = parse_number(args_.values[i]);
+            } catch (const std::exception& e) {
+                throw std::invalid_argument("Ошибка разбора '" + args_.values[i] + "': " + e.what());
+            }
+
+            double angle_deg = args_.use_radians ? rad_to_deg(angle) : angle;
+            double angle_rad = args_.use_radians ? angle : deg_to_rad(angle);
+
+            int64_t fixed = angle_rad_to_fixed(angle_rad, args_.bits);
+
+            results.push_back(compute_sin(fixed, angle_deg, angle_rad, args_.bits, atan_table, k_inv));
+        }
+
+        // ---- Вывод JSON ----
+        std::string json = results_to_json(results, state_.verbosity == Verbosity::VERBOSE, args_.bits);
+
+        return json;
+    }
+
+    virtual std::string format_text(const std::string& json_result) {
+        json j = json::parse(json_result);
+
+        if (!j.is_array()) {
+            throw std::invalid_argument("Получена неверная json-строка, ожидался массив: " + json_result);
+        }
+
+        // TODO
+
+        return json_result;
+    }
+
+    virtual void print_repl_status() {
+        std::cout << "  Режим: " << (args_.use_radians ? "радианы" : "градусы") << "\n"
+                  << "  Разрядность: " << args_.bits << "\n"
+                  << "  Кол-во итераций: " << args_.iterations << "\n"
+                  << "  Формат: " << (state_.format == OutputFormat::JSON ? "json" : "text") << "\n"
+                  << "  Детализация: " << (state_.verbosity == Verbosity::BRIEF ? "краткая" : "подробная") << "\n"
+                  << "  Вывод: " << (args_.out_file.empty() ? "консоль" : args_.out_file) << "\n"
+                  << "\n";
+    }
+
+    virtual bool handle_repl_command(const std::string& cmd, const std::string& arg) {
+        bool handled = AppShell<SinArgs, SinReplState>::handle_repl_command(cmd, arg);
+
+        if (handled)
+            return true;
+        
+        if (cmd == "deg") {
+            args_.use_radians = false;
+            std::cout << "  Режим: градусы\n";
+        } else if (cmd == "rad") {
+            args_.use_radians = true;
+            std::cout << "  Режим: радианы\n";
+        } else if (cmd == "iter") {
+            if (arg.empty()) {
+                std::cout << "  Кол-во итераций: "<< args_.iterations << "\n";
+            } else {
+                try {
+                    int iter = std::stoi(arg);
+                    if (iter < 4 || iter > 62) {
+                        std::cout << "  Ошибка: кол-во итераций должно быть в диапазоне [4, 62]\n";
+                    } else {
+                        args_.iterations = iter;
+                        std::cout << "  Кол-во итераций: "
+                                  << args_.iterations << "\n";
+                    }
+                } catch (...) {
+                    std::cout << "  Ошибка: некорректное значение: " << arg << "\n";
+                }
+            }
+        } else if (cmd == "verbose") {
+            state_.verbosity = Verbosity::VERBOSE;
+            std::cout << "  Детализация: подробная\n";
+        } else if (cmd == "brief") {
+            state_.verbosity = Verbosity::BRIEF;
+            std::cout << "  Детализация: краткая\n";
+        }
+        else {
+            return false;
+        }
+
+        return true;
+    }
+
+    virtual void print_repl_help() {
+        std::cout
+            << "Команды:\n"
+            << "  :deg            Переключить на градусы\n"
+            << "  :rad            Переключить на радианы\n"
+            << "  :bits N         Установить разрядность\n"
+            << "  :iter N         Установить кол-во итераций\n"
+            << "  :json           Вывод в формате JSON\n"
+            << "  :text           Вывод в текстовом формате\n"
+            << "  :verbose        Подробный вывод (с итерациями)\n"
+            << "  :brief          Краткий вывод\n"
+            << "  :out ФАЙЛ       Записывать результат в файл\n"
+            << "  :out -          Вывод на консоль\n"
+            << "  :status         Показать текущие настройки\n"
+            << "  :help           Показать эту справку\n"
+            << "  quit            Выход\n"
+            << "\n"
+            << "Ввод значений:\n"
+            << "  Одно или несколько чисел через пробел.\n"
+            << "  Десятичный разделитель: точка или запятая.\n"
+            << "  Пример: 45 90.5 -135,7\n"
+            << "\n";
+    }
+};
 
 
 int main(int argc, char* argv[]) {
     setlocale(LC_ALL, "ru_RU.UTF-8");
 
-    bool use_radians = false;
-    int bits = 32;
-    int iterations = bits;
-    std::string in_file;
-    std::string out_file;
-    std::vector<std::string> raw_values;
+    SinShell shell;
 
-    // ---- Разбор аргументов ----
-    for (int a = 1; a < argc; a++) {
-        std::string arg = argv[a];
-        if (arg == "--deg") {
-            use_radians = false;
-        } else if (arg == "--rad") {
-            use_radians = true;
-        } else if (arg == "--bits") {
-            if (++a >= argc) {
-                std::cerr << "Ошибка: --bits требует значение\n";
-                return 1;
-            }
-            bits = std::stoi(argv[a]);
-            if (bits < 4 || bits > 62) {
-                std::cerr << "Ошибка: bits должен быть в диапазоне [4, 62]\n";
-                return 1;
-            }
-        } else if (arg == "-n" || arg == "--iterations") {
-            if (++a >= argc) { 
-                std::cerr << "Ошибка: --iterations требует значение\n"; 
-                return 1; 
-            }
-            iterations = std::stoi(argv[a]);
-            if (iterations < 0) {
-                std::cerr << "Ошибка: iterations должен быть > 0\n";
-                return 1;
-            }
-        } else if (arg == "-i" || arg == "--in") {
-            if (++a >= argc) {
-                std::cerr << "Ошибка: --in требует имя файла\n";
-                return 1;
-            }
-            in_file = argv[a];
-        } else if (arg == "-o" || arg == "--out") {
-            if (++a >= argc) {
-                std::cerr << "Ошибка: --out требует имя файла\n";
-                return 1;
-            }
-            out_file = argv[a];
-        } else if (arg == "-h" || arg == "--help") {
-            print_usage();
-            return 0;
-        } else {
-            raw_values.push_back(arg);
-        }
-    }
-
-    // Чтение из файла
-    if (!in_file.empty()) {
-        auto file_vals = read_values_from_file(in_file);
-        raw_values.insert(raw_values.end(),
-                          file_vals.begin(), file_vals.end());
-    }
-
-    if (raw_values.empty()) {
-        std::cerr << "Ошибка: не указаны входные значения\n";
-        print_usage();
-        return 1;
-    }
-
-    // ---- Генерация констант CORDIC ----
-    auto atan_table = generate_atan_table(bits, iterations);
-    int64_t k_inv   = generate_k_inv(bits, iterations);
-
-    // ---- Вычисление ----
-    std::vector<CordicResult> results;
-    results.reserve(raw_values.size());
-
-    for (const auto& raw : raw_values) {
-        double angle;
-        try {
-            angle = parse_number(raw);
-        } catch (const std::exception& e) {
-            std::cerr << "Ошибка разбора '" << raw
-                      << "': " << e.what() << "\n";
-            return 1;
-        }
-
-        double angle_deg = use_radians ? rad_to_deg(angle) : angle;
-        double angle_rad = use_radians ? angle : deg_to_rad(angle);
-
-        int64_t fixed = angle_rad_to_fixed(angle_rad, bits);
-
-        results.push_back(
-            compute_sin(fixed, angle_deg, angle_rad,
-                        bits, atan_table, k_inv));
-    }
-
-    // ---- Вывод JSON ----
-    std::string json = results_to_json(results, bits);
-
-    if (!out_file.empty()) {
-        write_to_file(out_file, json);
-    } else {
-        std::cout << json;
-    }
-
-    return 0;
+    return shell.run(argc, argv);
 }
