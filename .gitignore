@@ -7,3 +7,4 @@ scan
 err_scan
 converter
 const_generator
+*.json
