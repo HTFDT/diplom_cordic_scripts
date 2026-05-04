@@ -143,11 +143,6 @@ static CordicResult compute_sin(
             z_new = z + atan_table[i];
         }
 
-        // Насыщаем до bits
-        x_new = saturate(x_new, bits);
-        y_new = saturate(y_new, bits);
-        z_new = saturate(z_new, bits);
-
         // Обрезаем до bits
         x = truncate(x_new, bits);
         y = truncate(y_new, bits);
@@ -216,12 +211,18 @@ enum class Verbosity {
     VERBOSE
 };
 
+enum class InputType {
+    DEGREES,
+    RADIANS,
+    BINARY
+};
+
 struct SinReplState : ReplState {
     Verbosity verbosity = Verbosity::VERBOSE;
 };
 
 struct SinArgs : CommonArgs {
-    bool use_radians = false;
+    InputType input_type = InputType::DEGREES;
     std::string in_file;
     int iterations = 32;
     std::vector<std::string> values;
@@ -234,13 +235,31 @@ public:
         "Вычисляет sin(x) методом CORDIC в целочисленной арифметике\n"
         "с фиксированной точкой.\n"
     ) {
-        app_.add_flag("--rad", args_.use_radians,
-            "Вход в радианах (по умолчанию: градусы)");
+        // --rad
+        auto *rad = app_.add_flag(
+            "--rad",
+            [this](int64_t) { args_.input_type = InputType::RADIANS; },
+            "Вход в радианах"
+        );
 
-        bool placeholder;
-        app_.add_flag("--deg", placeholder,
-            "Вход в градусах (по умолчанию)")
-            ->excludes("--rad");
+        // --deg
+        auto *deg = app_.add_flag(
+            "--deg",
+            [this](int64_t) { args_.input_type = InputType::DEGREES; },
+            "Вход в градусах (по умолчанию)"
+        );
+
+        // --bin
+        auto *bin = app_.add_flag(
+            "--bin",
+            [this](int64_t) { args_.input_type = InputType::BINARY; },
+            "Вход в виде 32-битных двоичных слов (BAM: 2 бита квадранта + 30 бита угла)"
+        );
+
+        // взаимоисключение
+        rad->excludes(deg)->excludes(bin);
+        deg->excludes(rad)->excludes(bin);
+        bin->excludes(rad)->excludes(deg);
 
         app_.add_option("-i,--in", args_.in_file,
             "Читать значения из файла")
@@ -297,17 +316,28 @@ protected:
         results.reserve(args_.values.size());
 
         for (size_t i = 0; i < args_.values.size(); i++) {
-            double angle;
-            try {
-                angle = parse_number(args_.values[i]);
-            } catch (const std::exception& e) {
-                throw std::invalid_argument("Ошибка разбора '" + args_.values[i] + "': " + e.what());
+            int64_t fixed;
+            double angle_deg = 0;
+            double angle_rad = 0;
+
+            if (args_.input_type == InputType::DEGREES || args_.input_type == InputType::RADIANS) {
+                double angle;
+                try {
+                    angle = parse_number(args_.values[i]);
+                } catch (const std::exception& e) {
+                    throw std::invalid_argument("Ошибка разбора '" + args_.values[i] + "': " + e.what());
+                }
+
+                angle_deg = args_.input_type == InputType::RADIANS ? rad_to_deg(angle) : angle;
+                angle_rad = args_.input_type == InputType::RADIANS ? angle : deg_to_rad(angle);
+
+                fixed = angle_rad_to_fixed(angle_rad, args_.bits);
             }
-
-            double angle_deg = args_.use_radians ? rad_to_deg(angle) : angle;
-            double angle_rad = args_.use_radians ? angle : deg_to_rad(angle);
-
-            int64_t fixed = angle_rad_to_fixed(angle_rad, args_.bits);
+            else {
+                fixed = parse_fixed_bin(args_.values[i], args_.bits);
+                angle_rad = angle_fixed_to_rad(fixed, args_.bits);
+                angle_deg = rad_to_deg(angle_rad);
+            }
 
             results.push_back(compute_sin(fixed, angle_deg, angle_rad, args_.bits, atan_table, k_inv));
         }
@@ -331,7 +361,8 @@ protected:
     }
 
     virtual void print_repl_status() {
-        std::cout << "  Режим: " << (args_.use_radians ? "радианы" : "градусы") << "\n"
+        std::cout << "  Режим: " << (args_.input_type == InputType::RADIANS ? "радианы" 
+            : args_.input_type == InputType::DEGREES ? "градусы" : "двоичные числа") << "\n"
                   << "  Разрядность: " << args_.bits << "\n"
                   << "  Кол-во итераций: " << args_.iterations << "\n"
                   << "  Формат: " << (state_.format == OutputFormat::JSON ? "json" : "text") << "\n"
@@ -347,11 +378,14 @@ protected:
             return true;
         
         if (cmd == "deg") {
-            args_.use_radians = false;
+            args_.input_type = InputType::DEGREES;
             std::cout << "  Режим: градусы\n";
         } else if (cmd == "rad") {
-            args_.use_radians = true;
+            args_.input_type = InputType::RADIANS;
             std::cout << "  Режим: радианы\n";
+        } else if (cmd == "bin") {
+            args_.input_type = InputType::BINARY;
+            std::cout << "  Режим: двоичные числа\n";
         } else if (cmd == "iter") {
             if (arg.empty()) {
                 std::cout << "  Кол-во итераций: "<< args_.iterations << "\n";
@@ -388,6 +422,7 @@ protected:
             << "Команды:\n"
             << "  :deg            Переключить на градусы\n"
             << "  :rad            Переключить на радианы\n"
+            << "  :bin            Переключить на двоичные числа\n"
             << "  :bits N         Установить разрядность\n"
             << "  :iter N         Установить кол-во итераций\n"
             << "  :json           Вывод в формате JSON\n"

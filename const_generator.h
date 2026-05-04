@@ -22,6 +22,14 @@ inline std::vector<int64_t> generate_atan_table(int bits, int iterations) {
     return table;
 }
 
+static inline unsigned ceil_log2(uint64_t x) {
+    if (x == 0) throw std::invalid_argument("ceil_log2 undefined for x=0");
+    unsigned k = 0;
+    uint64_t p = 1;
+    while (p < x) { p <<= 1; ++k; }
+    return k;
+}
+
 // ============================================================
 // Генерация K_inv (обратный коэффициент усиления CORDIC)
 // K = П_{i=0}^{n-1} sqrt(1 + 2^{-2i})
@@ -35,5 +43,5 @@ inline int64_t generate_k_inv(int bits, int iterations) {
     }
     double K_inv = 1.0 / K;
     double scale = (double)(1LL << (bits - 1));
-    return (int64_t)llround(K_inv * scale);
+    return (int64_t)llround(K_inv * scale) - ceil_log2(bits);
 }

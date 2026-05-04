@@ -137,3 +137,51 @@ inline std::string to_bin_string(int64_t value, int bits) {
     }
     return result;
 }
+
+
+// Парсит двоичную строку в диапазоне 6..64 бит (задаётся параметром bits).
+// Формат:
+//   - "0b..." или без префикса
+//   - допускает '_' и пробелы
+//   - допускает ведущие нули
+// Возвращает значение как int64_t, интерпретируя результат как беззнаковый шаблон битов.
+static int64_t parse_fixed_bin(const std::string& s, int bits)
+{
+    // убираем '_' и пробелы
+    std::string t;
+    t.reserve(s.size());
+    for (char c : s) {
+        if (c == '_' || std::isspace((unsigned char)c)) continue;
+        t.push_back(c);
+    }
+    if (t.empty()) throw std::invalid_argument("empty binary string");
+
+    size_t pos = 0;
+    if (t.size() >= 2 && t[0] == '0' && (t[1] == 'b' || t[1] == 'B')) pos = 2;
+    if (pos >= t.size()) throw std::invalid_argument("binary string has no digits");
+
+    uint64_t v = 0;
+    int used = 0;
+    for (; pos < t.size(); pos++) {
+        char c = t[pos];
+        if (c != '0' && c != '1') throw std::invalid_argument("non-binary digit in: " + s);
+        v = (v << 1) | (uint64_t)(c - '0');
+        used++;
+        if (used > bits) throw std::out_of_range("binary value wider than 'bits' in: " + s);
+    }
+
+    return (int64_t)v;
+}
+
+// fixed (беззнаковый Q0.bits, диапазон [0, 2^bits)) -> угол в радианах [0, 2π)
+inline double angle_fixed_to_rad(int64_t fixed, int bits) {
+    const double TWO_PI = 2.0 * PI();
+
+    // интерпретируем как беззнаковое значение bits бит
+    uint64_t mask = (bits == 64) ? ~0ULL : ((1ULL << bits) - 1);
+    uint64_t u = (uint64_t)fixed & mask;
+
+    double scale = (double)(1ULL << bits);   // 2^bits
+    double normalized = (double)u / scale;   // [0, 1)
+    return normalized * TWO_PI;              // [0, 2π)
+}
