@@ -154,20 +154,20 @@ static int64_t parse_fixed_bin(const std::string& s, int bits)
         if (c == '_' || std::isspace((unsigned char)c)) continue;
         t.push_back(c);
     }
-    if (t.empty()) throw std::invalid_argument("empty binary string");
+    if (t.empty()) throw std::invalid_argument("пустая строка");
 
     size_t pos = 0;
     if (t.size() >= 2 && t[0] == '0' && (t[1] == 'b' || t[1] == 'B')) pos = 2;
-    if (pos >= t.size()) throw std::invalid_argument("binary string has no digits");
+    if (pos >= t.size()) throw std::invalid_argument("бинарная строка не содержит цифр");
 
     uint64_t v = 0;
     int used = 0;
     for (; pos < t.size(); pos++) {
         char c = t[pos];
-        if (c != '0' && c != '1') throw std::invalid_argument("non-binary digit in: " + s);
+        if (c != '0' && c != '1') throw std::invalid_argument("небинарные цифры: " + s);
         v = (v << 1) | (uint64_t)(c - '0');
         used++;
-        if (used > bits) throw std::out_of_range("binary value wider than 'bits' in: " + s);
+        if (used > bits) throw std::out_of_range("слишком длинная строка: " + s);
     }
 
     return (int64_t)v;

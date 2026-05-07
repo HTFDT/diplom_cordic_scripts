@@ -116,8 +116,8 @@ static bool cordic_overflow_quadrant0(
 }
 
 int main() {
-    const int bits = 16;
-    const int iterations = 16;
+    const int bits = 32;
+    const int iterations = 32;
 
     auto atan_table = generate_atan_table(bits, iterations);
     int64_t k_inv   = generate_k_inv(bits, iterations);
