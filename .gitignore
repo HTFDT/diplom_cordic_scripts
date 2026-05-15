@@ -1,11 +1,5 @@
 **/.vscode/
 **/*.dSYM/
 **/.DS_STORE
-*.exe
-cordic_sin
-scan
-err_scan
-converter
-const_generator
-ref_comparer
 *.json
+build/

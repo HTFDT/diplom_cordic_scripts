@@ -10,8 +10,9 @@
 //
 // Сборка будет долгой по времени выполнения: 2^32 * 32 итерации.
 
-#include "converter.h"
-#include "const_generator.h"
+#include "common_utils.h"
+#include "converter_sin.h"
+#include "const_generator_sin.h"
 
 #include <iostream>
 #include <iomanip>

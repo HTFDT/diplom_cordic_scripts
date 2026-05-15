@@ -1,5 +1,6 @@
-#include "const_generator.h"
-#include "converter.h"
+#include "common_utils.h"
+#include "const_generator_sin.h"
+#include "converter_sin.h"
 #include "json.h"
 #include "cli_common.h"
 using json = nlohmann::json;

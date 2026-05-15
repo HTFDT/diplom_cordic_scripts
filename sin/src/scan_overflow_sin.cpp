@@ -8,7 +8,7 @@
 #include <vector>
 #include <fstream>
 
-#include "const_generator.h"
+#include "const_generator_sin.h"
 
 static inline int64_t asr(int64_t v, int sh) { return v >> sh; }
 

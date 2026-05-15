@@ -3,7 +3,8 @@
 #include <vector>
 #include <cstdint>
 #include <cmath>
-#include "converter.h"
+
+#include "converter_sin.h"
 
 // ============================================================
 // Генерация таблицы arctan(2^{-i}) для CORDIC

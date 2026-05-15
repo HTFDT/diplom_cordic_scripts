@@ -1,4 +1,5 @@
-#include "converter.h"
+#include "converter_sin.h"
+#include "common_utils.h"
 #include <iostream>
 #include <string>
 #include <vector>

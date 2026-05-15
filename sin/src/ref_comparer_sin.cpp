@@ -1,5 +1,6 @@
-#include "converter.h"
-#include "const_generator.h"
+#include "common_utils.h"
+#include "converter_sin.h"
+#include "const_generator_sin.h"
 #include "cordic_sin.h"
 #include "cli_common.h"
 #include "json.h"
@@ -341,16 +342,20 @@ protected:
                     std::cout << "  Ошибка: некорректное значение: " << arg << "\n";
                 }
             }
+        } else {
+            return false;
         }
 
-        return false;
+        return true;
     }
 
     void print_repl_help() {
         std::cout
             << "Команды:\n"
             << "  :bits N         bits по умолчанию (может быть переопределён cfg.bits)\n"
-            << "  :iterations N   кол-во итераций по умолчанию (может быть переопределён cfg.iterations-count)\n"
+            << "  :iter N         кол-во итераций по умолчанию (может быть переопределён cfg.iterations-count)\n"
+            << "  :json           Вывод в формате JSON\n"
+            << "  :text           Вывод в текстовом формате\n"
             << "  :out FILE       записать результат в файл\n"
             << "  :out -          вывод в консоль\n"
             << "  :status         показать настройки\n"

@@ -1,5 +1,6 @@
-#include "converter.h"
-#include "const_generator.h"
+#include "common_utils.h"
+#include "converter_sin.h"
+#include "const_generator_sin.h"
 #include "json.h"
 #include "cli_common.h"
 #include "cordic_sin.h"

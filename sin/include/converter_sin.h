@@ -19,28 +19,6 @@ inline double PI() {
 }
 
 // ============================================================
-// Парсинг числа: принимает '.' и ',' как десятичный разделитель
-// ============================================================
-inline double parse_number(const std::string& s) {
-    std::string cleaned = s;
-    std::replace(cleaned.begin(), cleaned.end(), ',', '.');
-
-    // Используем istringstream с локалью "C",
-    // чтобы '.' всегда была десятичным разделителем
-    std::istringstream iss(cleaned);
-    iss.imbue(std::locale("C"));
-
-    double val;
-    iss >> val;
-
-    if (iss.fail() || !iss.eof()) {
-        throw std::invalid_argument("Не удалось распознать число: " + s);
-    }
-
-    return val;
-}
-
-// ============================================================
 // Градусы → радианы
 // ============================================================
 inline double deg_to_rad(double deg) {
@@ -93,35 +71,6 @@ inline int64_t angle_rad_to_fixed(double angle_rad, int bits) {
 inline double fixed_result_to_double(int64_t fixed_val, int bits) {
     double scale = (double)(1LL << (bits - 1));
     return fixed_val / scale;
-}
-
-// ============================================================
-// Чтение значений из файла (разделённых пробельными символами)
-// ============================================================
-inline std::vector<std::string> read_values_from_file(const std::string& filename) {
-    std::vector<std::string> values;
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        throw std::runtime_error("Не удалось открыть файл: " + filename);
-    }
-
-    std::string token;
-    while (file >> token) {
-        values.push_back(token);
-    }
-    return values;
-}
-
-// ============================================================
-// Запись строки в файл
-// ============================================================
-inline void write_to_file(const std::string& filename,
-                          const std::string& content) {
-    std::ofstream file(filename);
-    if (!file.is_open()) {
-        throw std::runtime_error("Не удалось открыть файл для записи: " + filename);
-    }
-    file << content;
 }
 
 // ============================================================
