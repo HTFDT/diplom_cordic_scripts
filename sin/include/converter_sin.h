@@ -73,55 +73,6 @@ inline double fixed_result_to_double(int64_t fixed_val, int bits) {
     return fixed_val / scale;
 }
 
-// ============================================================
-// Форматирование числа в двоичную строку заданной разрядности
-// ============================================================
-inline std::string to_bin_string(int64_t value, int bits) {
-    std::string result(bits, '0');
-    uint64_t uval = (uint64_t)value;
-    for (int i = 0; i < bits; i++) {
-        if (uval & (1ULL << (bits - 1 - i))) {
-            result[i] = '1';
-        }
-    }
-    return result;
-}
-
-
-// Парсит двоичную строку в диапазоне 6..64 бит (задаётся параметром bits).
-// Формат:
-//   - "0b..." или без префикса
-//   - допускает '_' и пробелы
-//   - допускает ведущие нули
-// Возвращает значение как int64_t, интерпретируя результат как беззнаковый шаблон битов.
-static int64_t parse_fixed_bin(const std::string& s, int bits)
-{
-    // убираем '_' и пробелы
-    std::string t;
-    t.reserve(s.size());
-    for (char c : s) {
-        if (c == '_' || std::isspace((unsigned char)c)) continue;
-        t.push_back(c);
-    }
-    if (t.empty()) throw std::invalid_argument("пустая строка");
-
-    size_t pos = 0;
-    if (t.size() >= 2 && t[0] == '0' && (t[1] == 'b' || t[1] == 'B')) pos = 2;
-    if (pos >= t.size()) throw std::invalid_argument("бинарная строка не содержит цифр");
-
-    uint64_t v = 0;
-    int used = 0;
-    for (; pos < t.size(); pos++) {
-        char c = t[pos];
-        if (c != '0' && c != '1') throw std::invalid_argument("небинарные цифры: " + s);
-        v = (v << 1) | (uint64_t)(c - '0');
-        used++;
-        if (used > bits) throw std::out_of_range("слишком длинная строка: " + s);
-    }
-
-    return (int64_t)v;
-}
-
 // fixed (беззнаковый Q0.bits, диапазон [0, 2^bits)) -> угол в радианах [0, 2π)
 inline double angle_fixed_to_rad(int64_t fixed, int bits) {
     const double TWO_PI = 2.0 * PI();
