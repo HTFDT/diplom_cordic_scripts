@@ -1,11 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
 
-REM Можно поменять на Debug при необходимости
 set BUILD_TYPE=Release
 
-REM Генератор. Если у тебя Ninja установлен, можно заменить на Ninja
-set GENERATOR=MinGW Makefiles
+set GENERATOR=Ninja
 
 if not exist build mkdir build
 
