@@ -34,15 +34,14 @@ inline LnResult compute_ln(
     double a_double,
     int bits,
     const std::vector<int>& schedule,   // длина = кол-во шагов
-    const std::vector<int64_t>& atanh_table,
-    int scale_shift = 0
+    const std::vector<int64_t>& atanh_table
 ) {
     LnResult res;
     res.arg_fixed = a_fixed;
     res.arg_double = a_double;
 
     if ((int)schedule.size() != (int)atanh_table.size())
-        throw std::invalid_argument("размеры schedule и atanh_table различны");
+        throw std::invalid_argument("размеры schedule и atanh_table не совпадают");
     
     // 0.5 в Q1.(bits-1)
     const int64_t HALF = (int64_t)(1LL << (bits - 2));
@@ -53,12 +52,6 @@ inline LnResult compute_ln(
     int64_t x = truncate(a_half + HALF, bits); // (a+1)/2
     int64_t y = truncate(a_half - HALF, bits); // (a-1)/2
     int64_t z = 0;
-
-    // скейлим x и y, чтобы избежать переполнения
-    if (scale_shift > 0) {
-        x = truncate(asr(x, scale_shift), bits);
-        y = truncate(asr(y, scale_shift), bits);
-    }
 
     res.iterations.reserve(schedule.size() + 1);
     res.iterations.push_back({0, x, y, z});

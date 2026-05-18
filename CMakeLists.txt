@@ -79,6 +79,14 @@ set_target_properties(cordic_ln PROPERTIES
 )
 target_include_directories(cordic_ln PRIVATE ${PROJ_INCLUDE_DIRS})
 
+add_executable(ln_scan
+    ln/src/ln_scan.cpp
+)
+set_target_properties(ln_scan PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/ln"
+)
+target_include_directories(ln_scan PRIVATE ${PROJ_INCLUDE_DIRS})
+
 
 if(MINGW)
   foreach(tgt
