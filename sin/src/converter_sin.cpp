@@ -19,7 +19,7 @@ struct ConverterArgs : CommonArgs {
 struct ConverterShell : AppShell<ConverterArgs> {
 public:
     ConverterShell() : AppShell(
-        "converter.exe", 
+        "converter_sin.exe", 
         "Преобразует углы (градусы или радианы) в формат Q0.(bits)\n"
         "с фиксированной точкой. Диапазон [-2pi, 2pi) отображается\n"
         "на [0, 2^(bits)).\n"

@@ -135,8 +135,8 @@ struct RefCmpState : ReplState { };
 struct RefComparer : AppShell<RefCmpArgs, RefCmpState> {
 public:
     RefComparer()
-        : AppShell("ref_comparer.exe",
-                   "Сравнение результатов эмуляции IDE Минитеры с эталоном CORDIC\n")
+        : AppShell("ref_comparer_sin.exe",
+                   "Сравнение результатов эмуляции вычисления sin(x) в IDE Минитеры с эталоном CORDIC\n")
     {
         app_.add_option("config", args_.config_file,
             "Путь к конфигурационному JSON файлу")

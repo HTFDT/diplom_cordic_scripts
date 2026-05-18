@@ -19,8 +19,8 @@ struct ConstGeneratorArgs : CommonArgs {
 struct ConstGeneratorShell : AppShell<ConstGeneratorArgs> {
 public:
     ConstGeneratorShell() : AppShell(
-        "const_generator.exe",
-        "Генерирует константы CORDIC: K_inv (коэффициент масштабирования) и таблицу arctan(2^{-i}) со значениями в диапазоне [0, pi/2).\n"
+        "const_generator_sin.exe",
+        "Генерирует константы CORDIC для вычисления sin: K_inv (коэффициент масштабирования) и таблицу arctan(2^{-i}) со значениями в диапазоне [0, pi/2).\n"
         "Вывод в формате JSON.\n"
         "Формат вывода:\n"
         "Объект с полями:\n"

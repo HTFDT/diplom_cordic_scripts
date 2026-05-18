@@ -27,3 +27,13 @@ static inline int64_t saturate(int64_t val, int bits) {
     int64_t min_val = -(1LL << (bits - 1));
     return std::max(min_val, std::min(max_val, val));
 }
+
+// Денормализация: сдвиг вправо с округлением
+
+static inline int64_t denorm(int64_t val, int shift) {
+    if (shift <= 0) return val;
+
+    int64_t shifted = val >> shift;   // арифметический сдвиг вправо
+    int64_t sign = (val < 0) ? 1 : 0;
+    return shifted + sign;
+}

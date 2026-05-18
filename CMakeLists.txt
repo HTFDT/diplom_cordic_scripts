@@ -94,6 +94,9 @@ if(MINGW)
       const_generator_sin
       cordic_sin
       ref_comparer_sin
+      const_generator_ln
+      converter_ln
+      cordic_ln
   )
     target_link_options(${tgt} PRIVATE -static -static-libgcc -static-libstdc++)
   endforeach()

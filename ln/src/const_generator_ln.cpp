@@ -18,12 +18,10 @@ struct ConstLnShell : AppShell<ConstLnArgs, ConstLnState> {
 public:
     ConstLnShell() : AppShell(
         "const_generator_ln.exe",
-        "Генерация констант для hyperbolic CORDIC ln(x): atanh table + 1/Kh\n"
+        "Генерация констант для hyperbolic CORDIC ln(x): atanh table\n"
         "Вывод в формате JSON.\n"
         "Формат вывода:\n"
         "Объект с полями:\n"
-        "coef        - K_h в формате Q1.(bits-1) (со знаком)\n"
-        "coef_double - K_h в десятичном представлении (double)\n"
         "iterations  - список arctanh(2^{-i}), каждый элемент в формате Q1.(bits-1) (со знаком)\n"
     ) {
         app_.add_option("-n,--iterations", args_.iterations,
@@ -38,12 +36,8 @@ protected:
     std::string compute() {
         auto schedule = generate_hyperbolic_schedule(args_.iterations);
         auto atanh_table = generate_atanh_table(args_.bits, schedule);
-        double Kh = compute_Kh(schedule);
-        int64_t invKh = generate_inv_Kh(args_.bits, schedule);
 
         ordered_json out;
-        out["coef"] = to_bin_string(invKh, args_.bits);
-        out["coef_double"] = 1.0 / Kh;
 
         ordered_json iters = ordered_json::object();
         for (size_t k = 0; k < schedule.size(); k++) {

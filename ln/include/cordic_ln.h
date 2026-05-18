@@ -58,8 +58,8 @@ inline LnResult compute_ln(
 
     for (size_t k = 0; k < schedule.size(); k++) {
         int i = schedule[k];
-        int64_t x_shift = asr(x, i);
-        int64_t y_shift = asr(y, i);
+        int64_t x_shift = denorm(x, i);
+        int64_t y_shift = denorm(y, i);
 
         int64_t x_new, y_new, z_new;
         // d = +1 if y < 0 else -1
