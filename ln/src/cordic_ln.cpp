@@ -64,7 +64,7 @@ struct LnShell : AppShell<LnArgs, LnState> {
 public:
     LnShell() : AppShell(
         "cordic_ln.exe",
-        "Вычисляет ln(x) методом hyperbolic CORDIC (vectoring)\n"
+        "Вычисляет ln(1+x) методом hyperbolic CORDIC (vectoring)\n"
     ) {
         auto *real = app_.add_flag(
             "--real",

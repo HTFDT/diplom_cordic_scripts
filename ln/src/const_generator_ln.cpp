@@ -18,11 +18,11 @@ struct ConstLnShell : AppShell<ConstLnArgs, ConstLnState> {
 public:
     ConstLnShell() : AppShell(
         "const_generator_ln.exe",
-        "Генерация констант для hyperbolic CORDIC ln(x): atanh table\n"
+        "Генерация констант для hyperbolic CORDIC ln(1+x): atanh table\n"
         "Вывод в формате JSON.\n"
         "Формат вывода:\n"
         "Объект с полями:\n"
-        "twoS - масштаб для применения при инициализации алгоритма"
+        "twoS - масштаб для применения при инициализации алгоритма\n"
         "iterations  - список arctanh(2^{-i}), каждый элемент в формате Q1.(bits-1) (со знаком)\n"
     ) {
         app_.add_option("-n,--iterations", args_.iterations,

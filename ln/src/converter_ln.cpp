@@ -25,7 +25,7 @@ struct LnConverterShell : AppShell<LnConvArgs, LnConvState> {
 public:
     LnConverterShell() : AppShell(
         "converter_ln.exe",
-        "Конвертация входа ln(x): real a в [0.5,1) <-> fixed (Q1.(bits-1))\n"
+        "Конвертация входа ln(1+x): real x в [0,1) <-> fixed (Q1.(bits-1))\n"
     ) {
         app_.add_option("-i,--in", args_.in_file,
             "Читать значения из файла")->check(CLI::ExistingFile);
