@@ -38,3 +38,10 @@ inline std::vector<int64_t> generate_atanh_table(int bits, const std::vector<int
     }
     return table;
 }
+
+// константа для инициализации алгоритма
+inline int64_t get_twoS(int bits) {
+    // 2S = 85/128
+    // fixed(85/128) = (85/128) * 2^(bits-1) = 85 * 2^(bits-8)
+    return (int64_t)85 << (bits - 8);
+}

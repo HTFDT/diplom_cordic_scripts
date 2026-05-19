@@ -42,15 +42,41 @@ inline LnResult compute_ln(
 
     if ((int)schedule.size() != (int)atanh_table.size())
         throw std::invalid_argument("размеры schedule и atanh_table не совпадают");
-    
-    // 0.5 в Q1.(bits-1)
-    const int64_t HALF = (int64_t)(1LL << (bits - 2));
 
-    // a_half = a/2
-    int64_t a_half = asr(a_fixed, 1);
+    // ----------------------------------------------------------
+    // Инициализация для ln(1+x):
+    //
+    // ln(1+x) = 2 * atanh( x / (2 + x) )
+    //
+    // Берём vectoring hyperbolic CORDIC с отношением:
+    //   y0 / x0 = x / (2 + x)
+    //
+    // Масштаб:
+    //   S = 85 / 256 = 1/4 + 1/16 + 1/64 + 1/256
+    //
+    // Тогда:
+    //   y0 = S * x
+    //   x0 = S * (2 + x) = 2S + Sx = 85/128 + Sx
+    //
+    // Это гарантирует:
+    //   x0 in [85/128, 255/256) < 1
+    //   y0 in [0, 85/256)
+    //
+    // Все вычисления остаются в signed Q1.(bits-1)
+    // ----------------------------------------------------------
 
-    int64_t x = truncate(a_half + HALF, bits); // (a+1)/2
-    int64_t y = truncate(a_half - HALF, bits); // (a-1)/2
+    // S*x = x*(85/256) = x/4 + x/16 + x/64 + x/256
+    // x >= 0, поэтому обычный >> допустим
+    int64_t sx =
+        (a_fixed >> 2) +
+        (a_fixed >> 4) +
+        (a_fixed >> 6) +
+        (a_fixed >> 8);
+
+    int64_t twoS = get_twoS(bits);
+
+    int64_t x = truncate(twoS + sx, bits);
+    int64_t y = truncate(sx, bits);
     int64_t z = 0;
 
     res.iterations.reserve(schedule.size() + 1);
@@ -86,7 +112,7 @@ inline LnResult compute_ln(
     res.result_fixed  = ln_fixed;
     res.result_double = (double)ln_fixed / (double)(1LL << (bits - 1));
 
-    double ref = std::log(a_double);
+    double ref = std::log1p(a_double);
     res.reference_fixed  = saturate((int64_t)llround(ref * (double)(1LL << (bits - 1))), bits);
     res.reference_double = (double)res.reference_fixed / (double)(1LL << (bits - 1));
     res.diff_fixed = res.result_fixed - res.reference_fixed;

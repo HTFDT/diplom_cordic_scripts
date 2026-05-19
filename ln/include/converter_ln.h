@@ -8,9 +8,9 @@
 
 
 inline int64_t ln_real_to_fixed(double a, int bits) {
-    // Требование: a in [0.5, 1)
-    if (!(a >= 0.5 && a < 1.0)) {
-        throw std::invalid_argument("аргумент должен принадлежать диапазону [0.5, 1). Получено: " + std::to_string(a));
+    // Требование: a in [0, 1)
+    if (!(a >= 0 && a < 1.0)) {
+        throw std::invalid_argument("аргумент должен принадлежать диапазону [0, 1). Получено: " + std::to_string(a));
     }
 
     // Формат: signed Q1.(bits-1), т.е. scale = 2^(bits-1)

@@ -70,8 +70,8 @@ protected:
         int64_t min_val = -(1LL << (args_.bits - 1));
         int64_t max_val = (1LL << (args_.bits - 1)) - 1;
         
-        // Диапазон входа [0.5, 1) в signed Q1.(bits-1)
-        int64_t start_code = 1LL << (args_.bits - 2); 
+        // Диапазон входа [0, 1) в signed Q1.(bits-1)
+        int64_t start_code = 0;
         int64_t end_code = max_val;
 
         uint64_t total_inputs = (uint64_t)(end_code - start_code + 1);
@@ -194,7 +194,7 @@ protected:
             }
 
             // Расчет ошибки
-            double ref = std::log(a_double);
+            double ref = std::log1p(a_double);
             double err = res.result_double - ref;
             double abs_err = std::fabs(err);
             sum_abs_err += (long double)abs_err;

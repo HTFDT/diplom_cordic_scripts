@@ -133,6 +133,8 @@ protected:
                 a_fixed = parse_fixed_bin(s, args_.bits);
                 a_fixed = truncate(a_fixed, args_.bits);
                 a_double = ln_fixed_to_real(a_fixed, args_.bits);
+                if (a_fixed < 0)
+                    throw std::invalid_argument("аргумент должен принадлежать диапазону [0, 1). Получено: " + std::to_string(a_double));
             }
 
             results.push_back(compute_ln(

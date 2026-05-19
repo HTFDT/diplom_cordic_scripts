@@ -22,6 +22,7 @@ public:
         "Вывод в формате JSON.\n"
         "Формат вывода:\n"
         "Объект с полями:\n"
+        "twoS - масштаб для применения при инициализации алгоритма"
         "iterations  - список arctanh(2^{-i}), каждый элемент в формате Q1.(bits-1) (со знаком)\n"
     ) {
         app_.add_option("-n,--iterations", args_.iterations,
@@ -47,6 +48,7 @@ protected:
             item["atanh_double"] = (double)atanh_table[k] / (double)(1LL << (args_.bits - 1));
             iters[std::to_string(k)] = item;
         }
+        out["twoS"] = to_bin_string(get_twoS(args_.bits), args_.bits);
         out["iterations"] = iters;
 
         return out.dump(2) + "\n";
