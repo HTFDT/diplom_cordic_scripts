@@ -110,7 +110,7 @@ public:
 
         app_.add_option("-n,--iterations", args_.iterations,
             "Кол-во итераций (по умолчанию: 32)")
-            ->check(CLI::Range(4, 62));
+            ->check(CLI::Range(4, 64));
 
         app_.add_option("values", args_.values,
             "Входные значения")
@@ -235,8 +235,8 @@ protected:
             } else {
                 try {
                     int iter = std::stoi(arg);
-                    if (iter < 4 || iter > 62) {
-                        std::cout << "  Ошибка: кол-во итераций должно быть в диапазоне [4, 62]\n";
+                    if (iter < 4 || iter > 64) {
+                        std::cout << "  Ошибка: кол-во итераций должно быть в диапазоне [4, 64]\n";
                     } else {
                         args_.iterations = iter;
                         std::cout << "  Кол-во итераций: "

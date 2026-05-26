@@ -53,7 +53,7 @@ public:
         // Параметры, общие для всех скриптов
         app_.add_option("--bits", args_.bits,
             "Разрядность (по умолчанию: 32)")
-            ->check(CLI::Range(4, 62));
+            ->check(CLI::Range(4, 64));
 
         app_.add_option("-o,--out", args_.out_file,
             "Записать результат в файл");
@@ -138,9 +138,15 @@ protected:
     virtual void print_repl_help() = 0;
 
     // ----------------------------------------------------------
+    // Валидация параметров для run_batch
+    // ----------------------------------------------------------
+    virtual void validate_args() { }
+
+    // ----------------------------------------------------------
     // Пакетный режим
     // ----------------------------------------------------------
     int run_batch() {
+        validate_args();
         std::string result;
         try {
             result = compute();
@@ -299,9 +305,9 @@ bool AppShell<TArgs, TReplState>::handle_repl_command(const std::string& cmd, co
             } else {
                 try {
                     int new_bits = std::stoi(arg);
-                    if (new_bits < 4 || new_bits > 62) {
+                    if (new_bits < 4 || new_bits > 64) {
                         std::cout << "  Ошибка: разрядность должна быть"
-                                  << "  в диапазоне [4, 62]\n";
+                                  << "  в диапазоне [4, 64]\n";
                     } else {
                         args_.bits = new_bits;
                         std::cout << "  Разрядность: "

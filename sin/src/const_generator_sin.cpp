@@ -30,7 +30,7 @@ public:
     ) { 
         app_.add_option("-n,--iterations", args_.iterations,
             "Кол-во итераций (по умолчанию: 32)")
-            ->check(CLI::Range(4, 62));
+            ->check(CLI::Range(4, 64));
     }
 
 protected:
