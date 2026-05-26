@@ -87,6 +87,14 @@ set_target_properties(ln_scan PROPERTIES
 )
 target_include_directories(ln_scan PRIVATE ${PROJ_INCLUDE_DIRS})
 
+add_executable(ref_comparer_ln
+    ln/src/ref_comparer_ln.cpp
+)
+set_target_properties(ref_comparer_ln PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/ln"
+)
+target_include_directories(ref_comparer_ln PRIVATE ${PROJ_INCLUDE_DIRS})
+
 
 if(MINGW)
   foreach(tgt

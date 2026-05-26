@@ -1,10 +1,5 @@
 #pragma once
 
-#include <vector>
-#include <cstdint>
-#include <cmath>
-#include <algorithm>
-
 #include "int_utils.h"
 
 struct LnIteration {
