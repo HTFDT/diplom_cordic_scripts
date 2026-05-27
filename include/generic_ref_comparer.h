@@ -159,6 +159,8 @@ struct IReferenceProvider {
         int bits,
         int iterations
     ) const = 0;
+
+    virtual int get_max_iterations(int iterations) const = 0;
 };
 
 // ------------------------------------------------------------
@@ -580,7 +582,7 @@ private:
                 throw std::invalid_argument("Для component = x/y/z необходимо указать номер итерации");
             }
             int v = std::stoi(s);
-            if (v < 0 || v > args_.iterations) {
+            if (v < 0 || v > provider.get_max_iterations(args_.iterations)) {
                 throw std::invalid_argument("Некорректный номер итерации");
             }
             args_.iter_num = v;

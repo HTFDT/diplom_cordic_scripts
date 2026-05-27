@@ -12,11 +12,15 @@ struct LnReferenceProvider : IReferenceProvider {
         return "Сравнение выходного значения из макроса IDE с эталоном CORDIC ln(1+x)\n";
     }
 
+    virtual int get_max_iterations(int iterations) const {
+        return generate_hyperbolic_schedule(iterations).size();
+    }
+
     ReferenceTrace compute_reference(
         int64_t input_fixed,
         int bits,
         int iterations
-    ) const override {
+    ) const {
         double x_double = ln_fixed_to_real(input_fixed, bits);
 
         auto schedule = generate_hyperbolic_schedule(iterations);

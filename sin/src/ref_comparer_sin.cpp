@@ -12,11 +12,15 @@ struct SinReferenceProvider : IReferenceProvider {
         return "Сравнение выходного значения из макроса IDE с эталоном CORDIC sin\n";
     }
 
+    virtual int get_max_iterations(int iterations) const {
+        return iterations;
+    }
+
     ReferenceTrace compute_reference(
         int64_t input_fixed,
         int bits,
         int iterations
-    ) const override {
+    ) const {
         double angle_rad = angle_fixed_to_rad(input_fixed, bits);
         double angle_deg = rad_to_deg(angle_rad);
 
