@@ -252,9 +252,11 @@ protected:
         } else if (cmd == "brief") {
             state_.verbosity = Verbosity::BRIEF;
             std::cout << "  Детализация: краткая\n";
+        } else {
+            return false;
         }
 
-        return false;
+        return true;
     }
 
     virtual void print_repl_help() {
